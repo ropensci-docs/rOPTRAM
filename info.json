@@ -1,0 +1,12 @@
+{
+  "commit": {
+    "commit": "aa147a8be6a8809b49bc0151f4617c0a9f1261f9",
+    "author": "Micha Silver <silverm@post.bgu.ac.il>",
+    "time": "2024-10-30 16:31:25",
+    "files": 17,
+    "merge": true,
+    "message": "Fixes merge conflicts\n"
+  },
+  "repo": "https://github.com/ropensci/rOPTRAM",
+  "pkg": "rOPTRAM"
+}
