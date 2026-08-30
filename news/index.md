@@ -1,0 +1,121 @@
+# Changelog
+
+## rOPTRAM 0.3.3 (2026-03-21)
+
+#### New Features
+
+``` R
+* Bumps to version 0.3.3.
+```
+
+#### BUG FIXES
+
+``` R
+* A test was added to identify and remove NDVI or STR rasters
+that are totally empty. This can happen, for example, in a region that is
+covered by snow on some image dates. The Copernicus SCM masking will block out
+all pixels, leaving the whole raster with values of NA. This case is now
+accounted for, and those image dates are skipped.
+```
+
+## rOPTRAM 0.3.2 (2026-02-14)
+
+#### New Features
+
+``` R
+* Bumps to version 0.3.2.
+```
+
+#### BUG FIXES
+
+``` R
+* The evalfunction that calculates STR now rescales raw Sentinel-2 values 
+within the script, rather than after the STR function. 
+* When setting `rm.hi.str` the option was applied for each input raster separately.
+This allowed for a case when one raster had very high values,
+those values would be included in the final VI-STR table,
+even though they would be above the high STR if the cutoff was calculated
+for the whole table. This is fixed, such that high STR are removed 
+after merging all raster values.
+```
+
+## rOPTRAM 0.3.1 (2025-06-10)
+
+#### New Features
+
+``` R
+* Bumps to version 0.3.1.
+* Adds new option `area_cover` to set minimum coverage of the AOI by sentinel tile.
+* Checks for length of image list returned by `SearchCatalog`. If no images are left, exits gracefully.
+* Removed uncessary dependency on `MASS` package.
+* Changes evalscripts to download indices in INT16 datatype, to save both CDSE processing units and download time.
+  (Indices are scaled back to range (-1.0, 1.0) after download.)
+```
+
+## rOPTRAM 0.3.0 (2024-08-15)
+
+#### NEW FEATURES
+
+``` R
+* Adds option to filter out clouds, cloud shadows, water, using the Sentinel-2 SCM mask layer.
+* Implements check for existing STR and VI files to avoid downloading again and overwriting. 
+* Adds option to save list of images from CDSE::SearchCatalog after filtering for max cloud cover.
+* Adds option to set output resolution of downloaded images.
+```
+
+#### BUG FIXES
+
+``` R
+* Fixes error in optram_safe(), offered by @kiviarttu:  [github issue][https://github.com/ropensci/rOPTRAM/issues/4]
+```
+
+## rOPTRAM 0.2.0 (2024-07-02)
+
+#### NEW FEATURES
+
+- Implements
+  [`optram_options()`](https://docs.ropensci.org/rOPTRAM/reference/optram_options.md)
+  function to allow setting many algorithm options that are applied
+  throughout the model.
+- Implements four coloring options for the VI-STR scatter plot: colors
+  by point density, colors by a categorical attribute column in the aoi
+  polygon, colors by image date, uniform color with contour lines of
+  point density,
+- Adds tileid (Sentinel-2 tiles) to downloaded images. This allows to
+  save images from adjacent tiles when an AOI extends beyond a single
+  tile.
+- The `CDSE` function
+  [`GetArchiveImage()`](https://zivankaraman.github.io/CDSE/reference/GetArchiveImage.html)
+  has been deprecated. This version of `rOPTRAM` uses the new
+  [`GetImage()`](https://zivankaraman.github.io/CDSE/reference/GetImage.html)
+  function.
+
+## rOPTRAM 0.2.0 (2024-06-06)
+
+FIRST RELEASE ON ROPENSCI
+
+## rOPTRAM 0.1.0 (2024-04-30)
+
+INITIAL RESPONSE TO REVIEWS
+
+#### NEW FEATURES
+
+- Implements three curve fitting algorithms to determine OPTRAM
+  trapezoid.
+
+#### MINOR IMPROVEMENTS
+
+- Removes unnecessary tests.
+- Requires user to input area of interest as object.
+- Plot of trapezoid returned as plot to allow user to apply further
+  tweaks.
+
+#### BUG FIXES
+
+- Fixes path to images in vignettes
+
+#### DOCUMENTATION FIXES
+
+- Fixes documentation regarding download with package
+- Edits in keeping with [r-lib
+  guide](https://roxygen2.r-lib.org/articles/formatting.html).
