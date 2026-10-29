@@ -1,0 +1,358 @@
+# rOPTRAM: Deriving Soil Moisture from Sentinel-2 Imagery
+
+## Introduction ![](images/rOPTRAM_logo.jpg)
+
+`rOPTRAM` implements The OPtical TRapezoid Model (OPTRAM) to derive soil
+moisture based on the linear relation between a vegetation index,
+i.e. NDVI, and Land Surface Temperature (LST). The Short Wave Infra-red
+(SWIR) band is used as a proxy for LST. The SWIR band is transformed to
+Swir Transformed Reflectance (STR).
+
+A scatterplot of NDVI vs. STR is used to produce wet and dry linear
+regression lines, and the slope/intercept coefficients of these lines
+comprise the trapezoid. These coefficients are then used on a new
+satellite image to determine soil moisture.
+
+See: Sadeghi et al. (2017), Burdun et al. (2020), Ambrosone et al.
+(2020)
+
+### Prerequisites
+
+Only a small number of commonly used R packages are required to use
+{rOPTRAM}. This includes:
+
+- base packages {tools} and {utils}
+- spatial packages {sf} and {terra}
+- data.frame and plotting {dplyr}, {ggplot2}
+
+Also, to allow {rOPTRAM} to download Sentinel-2 images, clip to a study
+area, and prepare the necessary vegetation index and STR products, the R
+package {CDSE} (see Karaman (2023)) as well as {jsonlite} are required.
+
+## Workflows
+
+Users can download Sentinel-2 tiles from the Copernicus manually, and
+run thru the steps one by one to produce the OPTRAM trapezoid, and
+predicted soil moisture maps. However, this approach is not optimal. The
+complete workflow can be initiated with a single function call to
+download, clip to area of interest, and produce the trapezoid
+coefficients. This all-inclusive approach is highly recommended since
+processing of the Sentinel-2 data is performed “in the cloud” and only
+the final products are downloaded, **greatly** reducing the download
+file sizes.
+
+That recommended R package {CDSE} interfaces with the Copernicus
+DataSpace Ecosystem in one of two ways:
+
+- Thru the [Scihub
+  API](https://shapps.dataspace.copernicus.eu/dashboard/#/).
+- Thru the [openEO platform](https://openeo.dataspace.copernicus.eu/)
+
+Both methods require [registering](https://dataspace.copernicus.eu/) on
+the Copernicus DataSpace
+
+``` r
+
+remotes::install_github("ropensci/rOPTRAM")
+library(rOPTRAM)
+ls(getNamespace('rOPTRAM'))
+# The {CDSE} and {jsonlite} packages are required for downloading Sentinel imagery from Copernicus DataSpace.
+library("CDSE")
+library("jsonlite")
+```
+
+## Package options
+
+The {rOPTRAM} package is controlled by several options, set
+automatically when the package first loads. These defaults can be viewed
+by running the function
+[`optram_options()`](https://docs.ropensci.org/rOPTRAM/reference/optram_options.md)
+without arguments:
+
+``` r
+
+optram_options()
+#> "area_cover = 99"
+#> "edge_points = TRUE"
+#> "feature_col = ID"
+#> "max_cloud = 12"
+#> "max_tbl_size = 1e+06"
+#> "only_vi_str = FALSE"
+#> "overwrite = FALSE"
+#> "period = full"
+#> "plot_colors = no"
+#> "porosity = 0.4"
+#> "remote = scihub"
+#> "resolution = 10"
+#> "rm.hi.str = FALSE"
+#> "rm.low.vi = FALSE"
+#> "save_img_list = FALSE"
+#> "scm_mask = TRUE"
+#> "SWIR_band = 11"
+#> "tileid = NA"
+#> "trapezoid_method = linear"
+#> "veg_index = NDVI"
+#> "vi_step = 0.005"
+```
+
+Users can override any of the defaults by calling this function with
+alternative values for the options. For example, Sentinel images are
+downloaded, by default for all available image dates between the
+specified `from_date` and `to_date`. Users can, instead, choose to
+download images only for a specific season as follows:
+
+``` r
+
+optram_options("period", "seasonal")
+#> "area_cover = 99"
+#> "edge_points = TRUE"
+#> "feature_col = ID"
+#> "max_cloud = 12"
+#> "max_tbl_size = 1e+06"
+#> "only_vi_str = FALSE"
+#> "overwrite = FALSE"
+#> "period = seasonal"
+#> "plot_colors = no"
+#> "porosity = 0.4"
+#> "remote = scihub"
+#> "resolution = 10"
+#> "rm.hi.str = FALSE"
+#> "rm.low.vi = FALSE"
+#> "save_img_list = FALSE"
+#> "scm_mask = TRUE"
+#> "SWIR_band = 11"
+#> "tileid = NA"
+#> "trapezoid_method = linear"
+#> "veg_index = NDVI"
+#> "vi_step = 0.005"
+```
+
+Now, only images between the day/month of `from_date` and day/month of
+`to_date` will be acquired, but for all years in the date range.
+
+Three trapezoid fitting functions are implemented in {rOPTRAM}. The
+default is “linear”, but users can change as follows:
+
+``` r
+
+optram_options("trapezoid_method", "polynomial")
+#> "area_cover = 99"
+#> "edge_points = TRUE"
+#> "feature_col = ID"
+#> "max_cloud = 12"
+#> "max_tbl_size = 1e+06"
+#> "only_vi_str = FALSE"
+#> "overwrite = FALSE"
+#> "period = seasonal"
+#> "plot_colors = no"
+#> "porosity = 0.4"
+#> "remote = scihub"
+#> "resolution = 10"
+#> "rm.hi.str = FALSE"
+#> "rm.low.vi = FALSE"
+#> "save_img_list = FALSE"
+#> "scm_mask = TRUE"
+#> "SWIR_band = 11"
+#> "tileid = NA"
+#> "trapezoid_method = polynomial"
+#> "veg_index = NDVI"
+#> "vi_step = 0.005"
+```
+
+The default trapezoid plot shows a scatter plot cloud of vegetation
+index values vs SWIR Transformed Reflectance, where all points have a
+uniform color. This plot can be improved by coloring the points by their
+density within the scatterplot. This is accomplished by choosing to set
+the option “plot_colors” to “density”:
+
+``` r
+
+optram_options("plot_colors", "density")
+#> "area_cover = 99"
+#> "edge_points = TRUE"
+#> "feature_col = ID"
+#> "max_cloud = 12"
+#> "max_tbl_size = 1e+06"
+#> "only_vi_str = FALSE"
+#> "overwrite = FALSE"
+#> "period = seasonal"
+#> "plot_colors = density"
+#> "porosity = 0.4"
+#> "remote = scihub"
+#> "resolution = 10"
+#> "rm.hi.str = FALSE"
+#> "rm.low.vi = FALSE"
+#> "save_img_list = FALSE"
+#> "scm_mask = TRUE"
+#> "SWIR_band = 11"
+#> "tileid = NA"
+#> "trapezoid_method = polynomial"
+#> "veg_index = NDVI"
+#> "vi_step = 0.005"
+```
+
+The porosity parameter refers to soil porosity over the study area. This
+parameter is used to scale the rOPTRAM output to Volumetric Water
+Content values. For sandy soils without organic content, a value of 0.4
+is appropriate. Clay and clay/loam soils with high organic content have
+higher porosity and users should set this option appropriately. Some
+typical values appear in the table below.
+
+``` r
+
+knitr::include_graphics("images/soil_porosity.png")
+```
+
+![](images/soil_porosity.png)
+
+![reference](https://doi.org/10.1029/WR014i004p00601)
+
+reference
+
+## Main wrapper function
+
+### Run the full OPTRAM model procedure with a single function call
+
+Registration on Copernicus DataSpace was done in advance, and the OAuth
+credentials (*clientid*, and *secret*) have been saved to the user’s
+home directory.
+
+Downloaded Sentinel-2 images are saved to `S2_output_dir`. For this
+example, outputs are saved to
+[`tempdir()`](https://rdrr.io/r/base/tempfile.html)
+
+``` r
+
+from_date <- "2022-05-01"
+to_date <- "2023-04-30"
+output_dir <- tempdir()
+aoi <- sf::st_read(system.file("extdata",
+                               "lachish.gpkg", package = "rOPTRAM"))
+optram_options("veg_index", "NDVI")
+optram_options("trapezoid_method", "linear")
+```
+
+``` r
+
+rmse <- optram(aoi,
+              from_date, to_date,
+              S2_output_dir = output_dir,
+              data_output_dir = output_dir)
+#> [1] "RMSE for fitted trapezoid:"
+#>    RMSE.wet  RMSE.dry
+#> 1 0.2747341 0.1407656
+```
+
+``` r
+
+knitr::kable(rmse, caption = "Trapezoid coefficients", format = "html")
+```
+
+| RMSE.wet | RMSE.dry |
+|---------:|---------:|
+|   0.2747 |        3 |
+
+### Show trapezoid plot
+
+``` r
+
+edges_df <- read.csv(file.path(output_dir, "trapezoid_edges_lin.csv"))
+df_file <- file.path(output_dir, "VI_STR_data.rds")
+full_df <- readRDS(df_file)
+pl <- plot_vi_str_cloud(full_df, edges_df)
+```
+
+``` r
+
+pl <- pl + ggplot2::ggtitle("Lachish area trapezoid plot",
+                            subtitle = "linear fitted")
+ggplot2::ggsave(file.path(output_dir, "trapezoid_lachish_linear.png"),
+                width = 18, height = 12, units = "cm")
+```
+
+``` r
+
+knitr::include_graphics("images/trapezoid_lachish_linear.png")
+```
+
+![](images/trapezoid_lachish_linear.png)
+
+## Step by step
+
+### The same procedure as the wrapper function, but in explicit steps
+
+- Acquire Sentinel 2 images within a date range, and crop to AOI;
+- Prepare the SWIR Transformed Reflectance;
+- Prepare a data.frame of Vegetation Index and STR values;
+- Activate the options to remove VI values below zero
+- and the option to remove outlier STR values
+- Get trapezoid coefficients from the scatterplot of VI-STR pixels
+
+``` r
+
+# Using the same dates, and aoi as previous example
+s2_file_list <- optram_acquire_s2(aoi,
+                            from_date, to_date,
+                            output_dir = output_dir)
+STR_list <- list.files(file.path(output_dir, "STR"),
+                      pattern = ".tif$", full.names = TRUE)
+VI_list <- list.files(file.path(output_dir, "NDVI"),
+                      pattern = ".tif$", full.names = TRUE)
+full_df <- optram_ndvi_str(STR_list, VI_list,
+                           output_dir = output_dir)
+rmse <- optram_wetdry_coefficients(full_df,
+                                   output_dir = output_dir)
+knitr::kable(rmse, caption = "RMSE of fitted trapezoid edges", format = "html")
+```
+
+## Soil Moisture Estimate
+
+### Use trapezoid coefficients, VI, and STR rasters to derive soil moisture grid
+
+``` r
+
+img_date <- "2023-01-10"   # After a rain
+VI_dir <- file.path(output_dir, "NDVI")
+STR_dir <- file.path(output_dir, "STR")
+data_dir <- output_dir
+SM <- optram_calculate_soil_moisture(img_date, VI_dir, STR_dir,
+                                     data_dir = data_dir)
+```
+
+### Soil moisture plot
+
+``` r
+library("viridis")
+library("terra")
+names(SM) <- "Lachish soil moisture"
+SM[terra::values(SM) < 0] <- 0
+
+terra::plot(SM, col = rev(viridis::viridis(25)), smooth = TRUE,
+            main = "Soil moisture map")
+``
+
+``` r
+knitr::include_graphics("images/sm-plot.png")
+```
+
+![](images/sm-plot.png)
+
+Ambrosone, Mariapaola, Alessandro Matese, Salvatore Filippo Di Gennaro,
+et al. 2020. “Retrieving Soil Moisture in Rainfed and Irrigated Fields
+Using Sentinel-2 Observations and a Modified OPTRAM Approach.”
+*International Journal of Applied Earth Observation and Geoinformation*
+89 (July): 102113. <https://doi.org/10.1016/j.jag.2020.102113>.
+
+Burdun, Iuliia, Michel Bechtold, Valentina Sagris, et al. 2020.
+“Satellite Determination of Peatland Water Table Temporal Dynamics by
+Localizing Representative Pixels of A SWIR-Based Moisture Index.”
+*Remote Sensing* 12 (18): 2936. <https://doi.org/10.3390/rs12182936>.
+
+Karaman, Zivan. 2023. *CDSE: Copernicus Data Space Ecosystem API
+Wrapper*. <https://CRAN.R-project.org/package=CDSE>.
+
+Sadeghi, Morteza, Ebrahim Babaeian, Markus Tuller, and Scott B. Jones.
+2017. “The Optical Trapezoid Model: A Novel Approach to Remote Sensing
+of Soil Moisture Applied to Sentinel-2 and Landsat-8 Observations.”
+*Remote Sensing of Environment* 198 (September): 52–68.
+<https://doi.org/10.1016/j.rse.2017.05.041>.
