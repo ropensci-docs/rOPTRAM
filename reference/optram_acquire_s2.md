@@ -1,0 +1,180 @@
+# Acquire Sentinel 2 Images at a Given Location and Date Range
+
+Use the `CDSE` package to acquire, preprocess and crop Sentinel 2
+satellite imagery.
+
+## Usage
+
+``` r
+optram_acquire_s2(
+  aoi,
+  from_date,
+  to_date,
+  output_dir = tempdir(),
+  scale_factor = 10000,
+  save_creds = TRUE,
+  clientid = NULL,
+  secret = NULL
+)
+```
+
+## Arguments
+
+- aoi, :
+
+  sf POLYGON or MULTIPOLYGON, of boundary of area of interest
+
+- from_date, :
+
+  string, represents start of date range, formatted as "YYYY-MM-DD"
+
+- to_date, :
+
+  string, end of date range, formatted as "YYYY-MM-DD"
+
+- output_dir, :
+
+  string, path to save processed imagery.
+
+- scale_factor, :
+
+  numeric, scale factor for reflectance values. Default 10000. Required
+  only if `optram_option` "remote" is set to "openeo".
+
+- save_creds, :
+
+  logical, whether to save CDSE credentials. Default TRUE.
+
+- clientid, :
+
+  string, user's OAuth client id. Required if `save_creds` is TRUE.
+
+- secret, :
+
+  string, user's OAuth secret. Required if `save_creds` is TRUE.
+
+## Value
+
+output_paths, strings, list of downloaded (STR) files
+
+## Note
+
+This wrapper function calls one of multiple download functions, each
+accessing a different cloud-based resource. The cloud based resource can
+be one of "scihub" or "openeo":
+
+"scihub",... If "scihub" then: This function utilizes the `CDSE`
+package. Make sure to install the `CDSE` and `jsonlite` packages. Create
+OAuth account and token: Creating an Account:
+
+1.  Navigate to the [Copernicus
+    portal](https://dataspace.copernicus.eu/).
+
+2.  Click the "Register" button to access the account creation page.
+
+3.  If already registered, enter your username and password, and click
+    "Login."
+
+4.  Once logged in, go to the User dashboard and click "User Settings"
+    to access the Settings page.
+
+Creating OAuth Client:
+
+1.  On the Settings page, click the green "Create New" button located on
+    the right.
+
+2.  Enter a suitable "Client Name" and click the green "Create Client"
+    button.
+
+3.  A Client secret is generated.
+
+the user must save her secret and clientid somewhere. these credentials
+will be saved automatically to a standard filesystem location if the
+user calls `check_scihub()` with the argument save_creds set to TRUE
+(recommended). if the user chooses not to save credentials to the
+standard filesystem location, then she will need to add both clientid
+and secret to each
+[`acquire_scihub()`](https://docs.ropensci.org/rOPTRAM/reference/acquire_scihub.md)
+function call.
+
+Using Credentials with `aquire_scihub()`:
+
+- Now, you can utilize the generated `clientid` and `secret` in the
+  `aquire_scihub()` function.
+
+- If you want to store your credentials on your computer, ensure that
+  when running `aquire_scihub`, the `save_creds` parameter is set to
+  `TRUE`.
+
+- During the first run of `aquire_scihub()`, manually input your
+  `clientid` and `secret` in the function's signature.
+
+- Subsequent runs will use the stored credentials.
+
+Using Credentials with `aquire_scihub()`:
+
+- Now, you can utilize the generated `clientid` and `secret` in the
+  `aquire_scihub()` function.
+
+- If you want to store your credentials on your computer, ensure that
+  when running `aquire_scihub`, the `save_creds` parameter is set to
+  TRUE.
+
+- During the first run of `aquire_scihub()`, manually input your
+  `clientid` and `secret` in the function's signature.
+
+- Subsequent runs will use the stored credentials.
+
+Subject Area Constraint: The downloadable images are restricted to a
+maximum size of 2500 pixels on each side. This limitation is established
+due to the final resolution set to 10 meters using JavaScript.
+Consequently, the subject area available for download is limited to 25
+kilometers in both directions. Please be aware of this restriction when
+selecting your desired area for download. Area of Interest (AOI)
+Specification: When defining your Area of Interest (AOI), please ensure
+that it is represented as a POLYGON or MULTIPOLYGON layer.
+
+"openeo",... If "openeo" then: This function utilizes the `openeo`
+package. Instructions for the login process: First of all, to
+authenticate your account on the backend of the Copernicus Data Space
+Ecosystem, it is necessary for you to complete the registration process.
+Follow these instructions for registration:
+<https://documentation.dataspace.copernicus.eu/Registration.html> After
+you have registered and installed the `openeo` package, you can run the
+[`acquire_openeo()`](https://docs.ropensci.org/rOPTRAM/reference/acquire_openeo.md)
+function. During the process of connecting to the server and logging in,
+you need to follow these steps:
+
+1.  When the message "Press to proceed:" appears in the console, press
+    enter.
+
+2.  Calling this method opens your system web browser, with which you
+    can authenticate yourself on the back-end authentication system.
+    After that, the website will give you instructions to go back to the
+    R client, where your connection has logged your account in. This
+    means that every call that comes after that via the connection
+    variable is executed by your user account.
+
+3.  You will be redirected to
+    <https://identity.dataspace.copernicus.eu/>. Ensure you have an
+    account and are logged in. You will be required to grant access -
+    press "yes".
+
+Two SWIR bands are available in Sentinel-2: 1610 nanometer (nm) and 2190
+nm. Setting the option `SWIR_bands` with
+[`optram_options`](https://docs.ropensci.org/rOPTRAM/reference/optram_options.md)
+allows to choose which band is used in this model.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+from_date <- "2018-12-01"
+to_date <- "2019-04-30"
+aoi <- sf::st_read(system.file("extdata",
+                              "lachish.gpkg", package = 'rOPTRAM'))
+aoi <- sf::st_as_sf(sf::st_union(aoi))
+s2_file_list <- optram_acquire_s2(aoi,
+                                 from_date, to_date)
+} # }
+```
